@@ -7,15 +7,17 @@ import directory_dict
 # Reads in json containing list of states that have been selected by user
 def select_states() -> list:
     print("reading states from selected_states.json")
+    states = []
     try:
+        # opening json containing states that will be processed
         with open('../geojson/selected_states.json') as file:
-            data = json.load(file)
-            return data
+            states = json.load(file)
     except FileNotFoundError:
         print("Error: The file 'selected_states.json' was not found.")
     except json.JSONDecodeError:
         print("Error: Failed to decode JSON from the file.")
-    return []       
+    # list of states from  json
+    return states       
 
 def open_geojson(states: list):
     for state in states:
