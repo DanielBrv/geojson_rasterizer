@@ -3,7 +3,6 @@ import os.path
 import directory_dict
 # save states as serparate geojson files
 
-# select states
 # Reads in json containing list of states that have been selected by user
 def select_states() -> list:
     print("reading states from selected_states.json")
@@ -19,20 +18,32 @@ def select_states() -> list:
     # list of states from  json
     return states       
 
-def open_geojson(states: list):
-    for state in states:
-        if state not in directory_dict.us_states_path:
-            print(f'Error: {state} is not a valid state')
-            continue
+def open_geojson(path:str) -> json:
+    geojson = {}
+    try:
+        # opening json located at path
+        with open(path) as file:
+            geojson = json.load(file)
+    except FileNotFoundError:
+        print("Error: The file was not found.")
+    except json.JSONDecodeError:
+        print("Error: Failed to decode JSON from the file.")
+    # geojson from file located at path
+    return geojson
+            
+states = select_states()
+for state in states:
+    if state not in directory_dict.us_states_path:
+        print(f'Error: {state} is not a valid state')
+        continue
 
-        file_path = directory_dict.us_states_path[state]
-        if os.path.exists("../geojson/united_states/" + file_path):
+    file_path = "../geojson/united_states/" + directory_dict.us_states_path[state]
+    if not os.path.exists(file_path):
+        print(f'Error: {state} geojson file not found')
+        continue
+    geojson = open_geojson(file_path)
+    print(json.dumps(geojson))
 
-            print(f'{state} geojson file found')
-        else:
-            print(f'Error: {state} geojson file not found')
-
-open_geojson(select_states())
 # parse polygons
 
 # calc bounding box
