@@ -1,6 +1,7 @@
 import json
 import os.path
 import directory_dict
+import rasterize
 # save states as serparate geojson files
 
 # Reads in json containing list of states that have been selected by user
@@ -16,8 +17,10 @@ def select_states() -> list:
     except json.JSONDecodeError:
         print("Error: Failed to decode JSON from the file.")
     # list of states from  json
-    return states       
+    return states
 
+
+# Reads in json file located at path and returns 
 def open_geojson(path:str) -> json:
     geojson = {}
     try:
@@ -42,7 +45,8 @@ for state in states:
         print(f'Error: {state} geojson file not found')
         continue
     geojson = open_geojson(file_path)
-    print(json.dumps(geojson))
+    rasterize.load_geojson(geojson)
+    #print(json.dumps(geojson))
 
 # parse polygons
 
