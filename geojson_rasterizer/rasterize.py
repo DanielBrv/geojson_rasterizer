@@ -15,7 +15,24 @@ def load_geojson(geojson):
         bounding_box(coordinates, 25)
     elif polygon_type == "MultiPolygon":
         
-        pass
+        print
+        bbox = []
+        points = []
+        for polygon in coordinates:
+            polygon, = polygon
+            box, point = bounding_box(polygon, 5)
+            bbox.append(box)
+            points += point
+        feature_points = []
+        for point in points:
+            curr = {
+                "type": "Point",
+                "coordinates": point
+            }
+            feature_points.append(curr)
+
+        output(bbox, feature_points)
+
     else:
         return
     return
@@ -43,12 +60,12 @@ def bounding_box(polygon, distance_km):
     # constructs list of points as a list of geometries
     points = generate_grid([[left, bottom],[right, top]], distance_km)
     print(points)
-    output(bounds, points)
-    return 
-def 
+    #output(bounds, points)
+    return bounds, points
+
 # writes bounding box and points to a file for debug
 def output(bounding_box, points):
-    json_output = {
+    sjson_output = {
         "type": "FeatureCollection",
         "features": [
             {
@@ -60,6 +77,24 @@ def output(bounding_box, points):
                 "type": "GeometryCollection",
                 "geometries": points + [{
                         "type": "Polygon",
+                        "coordinates": [bounding_box]
+                    }]
+            }
+            }
+        ]
+    }
+    json_output = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "name": "Bounding Box Grid"
+            },
+            "geometry": {
+                "type": "GeometryCollection",
+                "geometries": points + [{
+                        "type": "MultiPolygon",
                         "coordinates": [bounding_box]
                     }]
             }
@@ -133,11 +168,12 @@ def generate_grid(bbox, d_km):
 
         while True:
             
-            point = {
-                "type": "Point",
-                "coordinates": [current_lon, current_lat]
-            }
-            points.append(point)
+            #point = {
+            #    "type": "Point",
+            #    "coordinates": [current_lon, current_lat]
+            #}
+            #points.append(point)
+            points.append([current_lon, current_lat])
 
             # move east
             next_lat, next_lon = move_point(current_lat, current_lon, d_km, 90)
