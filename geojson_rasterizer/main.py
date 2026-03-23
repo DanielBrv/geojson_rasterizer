@@ -33,6 +33,8 @@ def open_geojson(path:str) -> json:
         print("Error: Failed to decode JSON from the file.")
     # geojson from file located at path
     return geojson
+
+# spacing between points in kilometers
 distance_km = 4
 states = select_states()
 for state in states:
