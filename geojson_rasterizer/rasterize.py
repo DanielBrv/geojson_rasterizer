@@ -1,7 +1,7 @@
 import json
 import math
 
-def load_geojson(geojson):
+def load_geojson(geojson, distance_km):
     if geojson.get("type") != "GeometryCollection":
         return
     geometries = geojson.get("geometries")[0]
@@ -10,43 +10,49 @@ def load_geojson(geojson):
     polygon_type = geometries.get("type")
     coordinates = geometries.get("coordinates")
     if polygon_type == "Polygon":
-        coordinates, = coordinates
-        # bug where distance is 0 or negative
-        box, points = bounding_box(coordinates, 25)
-        feature_points = []
-        for point in points:
-            curr = {
-                "type": "Point",
-                "coordinates": point
-            }
-            feature_points.append(curr)
-        output([coordinates], feature_points)
+        rasterize_polygon(coordinates, distance_km)
     elif polygon_type == "MultiPolygon":
-        
-
-        bbox = []
-        points = []
-        for polygon in coordinates:
-            polygon, = polygon
-            box, point = bounding_box(polygon, 5)
-            bbox.append(box)
-            points += point
-        feature_points = []
-        for point in points:
-            curr = {
-                "type": "Point",
-                "coordinates": point
-            }
-            feature_points.append(curr)
-
-        output(bbox, feature_points)
-
+        rasterize_multipolygon(coordinates, distance_km)
     else:
-        return
+        print("Error: Invalid Geojson Structure")
     return
+
+def rasterize_multipolygon(coordinates, distance_km):
+    polygons = []
+    points = []
+
+    for polygon in coordinates:
+        polygon, = polygon
+        box, point = bounding_box(polygon, distance_km)
+        polygons.append(polygon)
+        points += point
+    feature_points = []
+    for point in points:
+        curr = {
+            "type": "Point",
+            "coordinates": point
+        }
+        feature_points.append(curr)
+    
+    output(polygons, feature_points)
+
+def rasterize_polygon(coordinates, distance_km):
+    coordinates, = coordinates
+    # bug where distance is 0 or negative
+    box, points = bounding_box(coordinates, distance_km)
+    feature_points = []
+    for point in points:
+        curr = {
+            "type": "Point",
+            "coordinates": point
+        }
+        feature_points.append(curr)
+    output([coordinates], feature_points)
 
 # creates polygon representing the bounding box of given geojson
 def bounding_box(polygon, distance_km):
+    if distance_km < 1:
+        distance_km = 1
     # finding bounds 
     top = float("-inf")
     bottom = float("inf")
@@ -77,24 +83,7 @@ def bounding_box(polygon, distance_km):
 
 # writes bounding box and points to a file for debug
 def output(bounding_box, points):
-    sjson_output = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {
-                    "name": "Bounding Box Grid"
-            },
-            "geometry": {
-                "type": "GeometryCollection",
-                "geometries": points + [{
-                        "type": "Polygon",
-                        "coordinates": [bounding_box]
-                    }]
-            }
-            }
-        ]
-    }
+
     json_output = {
         "type": "FeatureCollection",
         "features": [
@@ -125,14 +114,8 @@ def output(bounding_box, points):
 
 
 # Uses ray casting to test if some point is inside the polygon
-# Counts how many times a ray passes through the polygons edges.
-#
-# The given point's latitude will be used as the ray. All edges of the polygon
-# west of the given point are ignored
+# keeps track of how many times a ray passes through the polygons edges.
 
-# If a ray passes through an even number of edges, it is assumed 
-# the point is out side of the polygon and returns False. 
-# Otherwise it is assumed the point is inside the polygon and func returns True 
 def point_in_polygon(point, polygon):
     lon, lat = point
     inside = False

@@ -33,7 +33,7 @@ def open_geojson(path:str) -> json:
         print("Error: Failed to decode JSON from the file.")
     # geojson from file located at path
     return geojson
-            
+distance_km = 4
 states = select_states()
 for state in states:
     if state not in directory_dict.us_states_path:
@@ -45,7 +45,7 @@ for state in states:
         print(f'Error: {state} geojson file not found')
         continue
     geojson = open_geojson(file_path)
-    rasterize.load_geojson(geojson)
+    rasterize.load_geojson(geojson, distance_km)
     #print(json.dumps(geojson))
 
 # parse polygons
