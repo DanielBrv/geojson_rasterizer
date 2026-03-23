@@ -12,10 +12,18 @@ def load_geojson(geojson):
     if polygon_type == "Polygon":
         coordinates, = coordinates
         # bug where distance is 0 or negative
-        bounding_box(coordinates, 25)
+        box, points = bounding_box(coordinates, 25)
+        feature_points = []
+        for point in points:
+            curr = {
+                "type": "Point",
+                "coordinates": point
+            }
+            feature_points.append(curr)
+        output([coordinates], feature_points)
     elif polygon_type == "MultiPolygon":
         
-        print
+
         bbox = []
         points = []
         for polygon in coordinates:
@@ -50,18 +58,22 @@ def bounding_box(polygon, distance_km):
         top = max(top, latitude)
         bottom = min(bottom, latitude)
 
-    bounds = [
+    bounding_box = [
             [left, top],
             [right, top],
             [right, bottom],
             [left, bottom],
             [left, top]
         ]
-    # constructs list of points as a list of geometries
+    # constructing grid of points points distance_km appart
     points = generate_grid([[left, bottom],[right, top]], distance_km)
-    print(points)
-    #output(bounds, points)
-    return bounds, points
+
+    # Removing points outside of polygon
+    points = filter_points(polygon, points)
+
+    return bounding_box, points
+    
+
 
 # writes bounding box and points to a file for debug
 def output(bounding_box, points):
@@ -111,6 +123,44 @@ def output(bounding_box, points):
     except TypeError:
         print("Error: Data provided is not JSON serializable.")
 
+
+# Uses ray casting to test if some point is inside the polygon
+# Counts how many times a ray passes through the polygons edges.
+#
+# The given point's latitude will be used as the ray. All edges of the polygon
+# west of the given point are ignored
+
+# If a ray passes through an even number of edges, it is assumed 
+# the point is out side of the polygon and returns False. 
+# Otherwise it is assumed the point is inside the polygon and func returns True 
+def point_in_polygon(point, polygon):
+    lon, lat = point
+    inside = False
+
+    n = len(polygon)
+
+    for i in range(n):
+        lon1, lat1 = polygon[i]
+        lon2, lat2 = polygon[(i + 1) % n]
+
+        # Check if the ray crosses the edge vertically
+        if ((lat1 > lat) != (lat2 > lat)):
+            # Compute intersection longitude
+            intersect_lon = lon1 + (lat - lat1) * (lon2 - lon1) / (lat2 - lat1)
+
+            if lon < intersect_lon:
+                inside = not inside
+
+    return inside
+
+# removes points located outside of the original polygon
+# Returns list of original polygons
+def filter_points(polygon, points):
+    filtered = []
+    for point in points:
+        if point_in_polygon(point, polygon):
+            filtered.append(point)
+    return filtered
 
 
 def normalize_lon(lon):
@@ -184,8 +234,6 @@ def generate_grid(bbox, d_km):
                 break
 
             current_lon = next_lon
-
-
 
         # move south from westmost longitude
         next_lat, _ = move_point(current_lat, min_lon, d_km, 180)
